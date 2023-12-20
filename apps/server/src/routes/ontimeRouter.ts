@@ -9,6 +9,7 @@ import {
   getSettings,
   getUserFields,
   getViewSettings,
+  listProjects,
   patchPartialProjectFile,
   poll,
   postAliases,
@@ -87,3 +88,6 @@ router.post('/osc-subscriptions', validateOscSubscription, postOscSubscriptions)
 
 // create route between controller and '/ontime/new' endpoint
 router.post('/new', projectSanitiser, postNew);
+
+// create route between controller and '/ontime/projects' endpoint
+router.get('/projects', listProjects);

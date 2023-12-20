@@ -3,19 +3,21 @@ import { Alias, DatabaseModel, LogOrigin, ProjectData } from 'ontime-types';
 import { RequestHandler } from 'express';
 import fs from 'fs';
 import { networkInterfaces } from 'os';
+import { join } from 'path';
 
 import { fileHandler } from '../utils/parser.js';
 import { DataProvider } from '../classes/data-provider/DataProvider.js';
 import { failEmptyObjects, failIsNotArray } from '../utils/routerUtils.js';
 import { PlaybackService } from '../services/PlaybackService.js';
 import { eventStore } from '../stores/EventStore.js';
-import { isDocker, resolveDbPath } from '../setup.js';
+import { getAppDataPath, isDocker, resolveDbPath } from '../setup.js';
 import { oscIntegration } from '../services/integration-service/OscIntegration.js';
 import { logger } from '../classes/Logger.js';
 import { deleteAllEvents, notifyChanges } from '../services/rundown-service/RundownService.js';
 import { deepmerge } from 'ontime-utils';
 import { runtimeCacheStore } from '../stores/cachingStore.js';
 import { delayedRundownCacheKey } from '../services/rundown-service/delayedRundown.utils.js';
+import { getFileListFromFolder } from '../utils/getFileListFromFolder.js';
 
 // Create controller for GET request to '/ontime/poll'
 // Returns data for current state
@@ -410,5 +412,15 @@ export const postNew: RequestHandler = async (req, res) => {
     res.status(201).send(newData);
   } catch (error) {
     res.status(400).send(error);
+  }
+};
+
+export const listProjects: RequestHandler = async (_, res) => {
+  try {
+    const uploadsFolderPath = join(getAppDataPath(), 'uploads');
+    const fileList = await getFileListFromFolder(uploadsFolderPath);
+    res.status(200).send(fileList);
+  } catch (error) {
+    res.status(500).send({ message: error.toString() });
   }
 };
