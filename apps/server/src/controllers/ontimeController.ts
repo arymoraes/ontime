@@ -415,11 +415,45 @@ export const postNew: RequestHandler = async (req, res) => {
   }
 };
 
+/**
+ * Retrieves and lists all project files from the uploads directory.
+ * @param req
+ * @param res
+ */
 export const listProjects: RequestHandler = async (_, res) => {
   try {
     const uploadsFolderPath = join(getAppDataPath(), 'uploads');
     const fileList = await getFileListFromFolder(uploadsFolderPath);
     res.status(200).send(fileList);
+  } catch (error) {
+    res.status(500).send({ message: error.toString() });
+  }
+};
+
+/**
+ * Receives a `filename` from the request body and loads the project file from the uploads directory.
+ * @param req
+ * @param res
+ */
+export const loadProject: RequestHandler = async (req, res) => {
+  try {
+    const filename = req.body.filename;
+    if (!filename) {
+      return res.status(400).send({ message: 'Filename is required' });
+    }
+
+    const uploadsFolderPath = join(getAppDataPath(), 'uploads');
+    const filePath = join(uploadsFolderPath, filename);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).send({ message: 'File not found' });
+    }
+
+    await parseAndApply(filePath, req, res, {});
+
+    res.status(200).send({
+      message: `Loaded project ${filename}`,
+    });
   } catch (error) {
     res.status(500).send({ message: error.toString() });
   }

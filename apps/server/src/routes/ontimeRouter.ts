@@ -10,6 +10,7 @@ import {
   getUserFields,
   getViewSettings,
   listProjects,
+  loadProject,
   patchPartialProjectFile,
   poll,
   postAliases,
@@ -91,3 +92,6 @@ router.post('/new', projectSanitiser, postNew);
 
 // create route between controller and '/ontime/projects' endpoint
 router.get('/projects', listProjects);
+
+// create route between controller and '/ontime/load-project' endpoint
+router.post('/load-project', loadProject);
