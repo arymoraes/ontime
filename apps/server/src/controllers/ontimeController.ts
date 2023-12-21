@@ -1,6 +1,7 @@
-import { Alias, DatabaseModel, LogOrigin, ProjectData } from 'ontime-types';
+import { LogOrigin } from 'ontime-types';
+import type { Alias, DatabaseModel, GetInfo, HttpSettings, ProjectData } from 'ontime-types';
 
-import { RequestHandler } from 'express';
+import { RequestHandler, Request, Response } from 'express';
 import fs from 'fs';
 import { networkInterfaces } from 'os';
 import { join } from 'path';
@@ -10,13 +11,15 @@ import { DataProvider } from '../classes/data-provider/DataProvider.js';
 import { failEmptyObjects, failIsNotArray } from '../utils/routerUtils.js';
 import { PlaybackService } from '../services/PlaybackService.js';
 import { eventStore } from '../stores/EventStore.js';
-import { getAppDataPath, isDocker, resolveDbPath } from '../setup.js';
 import { oscIntegration } from '../services/integration-service/OscIntegration.js';
+import { httpIntegration } from '../services/integration-service/HttpIntegration.js';
 import { logger } from '../classes/Logger.js';
 import { deleteAllEvents, notifyChanges } from '../services/rundown-service/RundownService.js';
 import { deepmerge } from 'ontime-utils';
 import { runtimeCacheStore } from '../stores/cachingStore.js';
 import { delayedRundownCacheKey } from '../services/rundown-service/delayedRundown.utils.js';
+import { integrationService } from '../services/integration-service/IntegrationService.js';
+import { resolveDbPath, resolveStylesPath, isDocker, getAppDataPath } from '../setup.js';
 import { getFileListFromFolder } from '../utils/getFileListFromFolder.js';
 
 // Create controller for GET request to '/ontime/poll'
@@ -107,15 +110,16 @@ const getNetworkInterfaces = () => {
   return results;
 };
 
-// Create controller for POST request to '/ontime/info'
+// Create controller for GET request to '/ontime/info'
 // Returns -
-export const getInfo = async (req, res) => {
+export const getInfo = async (req: Request, res: Response<GetInfo>) => {
   const { version, serverPort } = DataProvider.getSettings();
   const osc = DataProvider.getOsc();
 
   // get nif and inject localhost
   const ni = getNetworkInterfaces();
   ni.unshift({ name: 'localhost', address: '127.0.0.1' });
+  const cssOverride = resolveStylesPath;
 
   // send object with network information
   res.status(200).send({
@@ -123,6 +127,7 @@ export const getInfo = async (req, res) => {
     version,
     serverPort,
     osc,
+    cssOverride,
   });
 };
 
@@ -151,7 +156,7 @@ export const postAliases = async (req, res) => {
     await DataProvider.setAliases(newAliases);
     res.status(200).send(newAliases);
   } catch (error) {
-    res.status(400).send(error);
+    res.status(400).send({ message: error.toString() });
   }
 };
 
@@ -174,7 +179,7 @@ export const postUserFields = async (req, res) => {
     await DataProvider.setUserFields(newData);
     res.status(200).send(newData);
   } catch (error) {
-    res.status(400).send(error);
+    res.status(400).send({ message: error.toString() });
   }
 };
 
@@ -237,7 +242,7 @@ export const postSettings = async (req, res) => {
     await DataProvider.setSettings(newData);
     res.status(200).send(newData);
   } catch (error) {
-    res.status(400).send(error);
+    res.status(400).send({ message: error.toString() });
   }
 };
 
@@ -272,7 +277,7 @@ export const postViewSettings = async (req, res) => {
     await DataProvider.setViewSettings(newData);
     res.status(200).send(newData);
   } catch (error) {
-    res.status(400).send(error);
+    res.status(400).send({ message: error.toString() });
   }
 };
 
@@ -281,27 +286,6 @@ export const postViewSettings = async (req, res) => {
 export const getOSC = async (req, res) => {
   const osc = DataProvider.getOsc();
   res.status(200).send(osc);
-};
-
-export const postOscSubscriptions = async (req, res) => {
-  if (failEmptyObjects(req.body, res)) {
-    return;
-  }
-
-  try {
-    const oscSubscriptions = req.body;
-    const oscSettings = DataProvider.getOsc();
-    oscSettings.subscriptions = oscSubscriptions;
-    await DataProvider.setOsc(oscSettings);
-
-    // TODO: this update could be more granular, checking that relevant data was changed
-    const { message } = oscIntegration.init(oscSettings);
-    logger.info(LogOrigin.Tx, message);
-
-    res.send(oscSettings).status(200);
-  } catch (error) {
-    res.status(400).send(error);
-  }
 };
 
 // Create controller for POST request to '/ontime/osc'
@@ -315,13 +299,72 @@ export const postOSC = async (req, res) => {
     const oscSettings = req.body;
     await DataProvider.setOsc(oscSettings);
 
+    integrationService.unregister(oscIntegration);
+
+    // TODO: this update could be more granular, checking that relevant data was changed
+    const { success, message } = oscIntegration.init(oscSettings);
+    logger.info(LogOrigin.Tx, message);
+
+    if (success) {
+      integrationService.register(oscIntegration);
+    }
+
+    res.send(oscSettings).status(200);
+  } catch (error) {
+    res.status(400).send({ message: error.toString() });
+  }
+};
+
+export const postOscSubscriptions = async (req, res) => {
+  if (failEmptyObjects(req.body, res)) {
+    return;
+  }
+
+  try {
+    const subscriptions = req.body;
+    const oscSettings = DataProvider.getOsc();
+    oscSettings.subscriptions = subscriptions;
+    await DataProvider.setOsc(oscSettings);
+
     // TODO: this update could be more granular, checking that relevant data was changed
     const { message } = oscIntegration.init(oscSettings);
     logger.info(LogOrigin.Tx, message);
 
     res.send(oscSettings).status(200);
   } catch (error) {
-    res.status(400).send(error);
+    res.status(400).send({ message: error.toString() });
+  }
+};
+
+// Create controller for GET request to '/ontime/http'
+export const getHTTP = async (_req, res: Response<HttpSettings>) => {
+  const http = DataProvider.getHttp();
+  res.status(200).send(http);
+};
+
+// Create controller for POST request to '/ontime/http'
+export const postHTTP = async (req, res) => {
+  if (failEmptyObjects(req.body, res)) {
+    return;
+  }
+
+  try {
+    const httpSettings = req.body;
+    await DataProvider.setHttp(httpSettings);
+
+    integrationService.unregister(httpIntegration);
+
+    // TODO: this update could be more granular, checking that relevant data was changed
+    const { success, message } = httpIntegration.init(httpSettings);
+    logger.info(LogOrigin.Tx, message);
+
+    if (success) {
+      integrationService.register(httpIntegration);
+    }
+
+    res.send(httpSettings).status(200);
+  } catch (error) {
+    res.status(400).send({ message: error.toString() });
   }
 };
 
@@ -350,7 +393,7 @@ export async function patchPartialProjectFile(req, res) {
     }
     res.status(200).send();
   } catch (error) {
-    res.status(400).send(error);
+    res.status(400).send({ message: error.toString() });
   }
 }
 
@@ -411,7 +454,7 @@ export const postNew: RequestHandler = async (req, res) => {
     await deleteAllEvents();
     res.status(201).send(newData);
   } catch (error) {
-    res.status(400).send(error);
+    res.status(400).send({ message: error.toString() });
   }
 };
 

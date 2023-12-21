@@ -46,7 +46,6 @@ export class DataProvider {
 
   static async clearRundown() {
     data.rundown = [];
-    // @ts-expect-error -- not sure how to type, this is library side
     await db.write();
   }
 
@@ -61,6 +60,10 @@ export class DataProvider {
 
   static getOsc() {
     return data.osc;
+  }
+
+  static getHttp() {
+    return data.http;
   }
 
   static getAliases() {
@@ -95,12 +98,16 @@ export class DataProvider {
     await this.persist();
   }
 
+  static async setHttp(newData) {
+    data.http = { ...newData };
+    await this.persist();
+  }
+
   static getRundown() {
     return [...data.rundown];
   }
 
   static async persist() {
-    // @ts-expect-error -- not sure how to type, this is library side
     await db.write();
   }
 

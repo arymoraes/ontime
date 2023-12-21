@@ -1,4 +1,5 @@
 import { DatabaseModel } from 'ontime-types';
+import { ONTIME_VERSION } from '../ONTIME_VERSION.js';
 
 export const dbModel: DatabaseModel = {
   rundown: [],
@@ -12,7 +13,7 @@ export const dbModel: DatabaseModel = {
   },
   settings: {
     app: 'ontime',
-    version: 2,
+    version: ONTIME_VERSION,
     serverPort: 4001,
     editorKey: null,
     operatorKey: null,
@@ -46,6 +47,17 @@ export const dbModel: DatabaseModel = {
     portOut: 9999,
     targetIP: '127.0.0.1',
     enabledIn: false,
+    enabledOut: false,
+    subscriptions: {
+      onLoad: [],
+      onStart: [],
+      onPause: [],
+      onStop: [],
+      onUpdate: [],
+      onFinish: [],
+    },
+  },
+  http: {
     enabledOut: false,
     subscriptions: {
       onLoad: [],

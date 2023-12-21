@@ -237,7 +237,7 @@
   },
   "settings": {
     "app": "ontime",
-    "version": 2,
+    "version": "2.0.0",
     "serverPort": 4001,
     "editorKey": null,
     "operatorKey": null,
@@ -258,6 +258,17 @@
     "portOut": 9999,
     "targetIP": "127.0.0.1",
     "enabled": true
+  },
+  "http": {
+    "enabledOut": false,
+    "subscriptions": {
+      "onLoad": [],
+      "onStart": [],
+      "onPause": [],
+      "onStop": [],
+      "onUpdate": [],
+      "onFinish": []
+    }
   },
   "aliases": [
     {

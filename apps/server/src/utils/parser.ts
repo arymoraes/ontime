@@ -30,6 +30,7 @@ import {
   parseAliases,
   parseProject,
   parseOsc,
+  parseHttp,
   parseRundown,
   parseSettings,
   parseUserFields,
@@ -243,7 +244,7 @@ export const parseExcel = (excelData: unknown[][], options?: Partial<ExcelImport
     project: projectData,
     settings: {
       app: 'ontime',
-      version: 2,
+      version: '2.0.0',
     },
     userFields: customUserFields,
   };
@@ -277,7 +278,7 @@ export const parseJson = async (jsonData): Promise<DatabaseModel | null> => {
   // Import OSC settings if any
   returnData.osc = parseOsc(jsonData) ?? dbModel.osc;
   // Import HTTP settings if any
-  // returnData.http = parseHttp(jsonData, enforce);
+  returnData.http = parseHttp(jsonData) ?? dbModel.http;
 
   return returnData as DatabaseModel;
 };
@@ -389,9 +390,6 @@ export const fileHandler = async (file: string, options: ExcelImportOptions): Pr
     let uploadedJson = null;
 
     uploadedJson = JSON.parse(rawdata);
-    if (uploadedJson.settings.version !== 2) {
-      throw new Error(`Project version unknown ${uploadedJson.settings.version}`);
-    }
     res.data = await parseJson(uploadedJson);
 
     await configService.updateDatabaseConfig(fileName);

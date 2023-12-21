@@ -5,6 +5,7 @@ import { isOntimeBlock, isOntimeDelay, isOntimeEvent, OntimeRundown, OntimeRundo
 
 import useFollowComponent from '../../common/hooks/useFollowComponent';
 import { useLocalStorage } from '../../common/hooks/useLocalStorage';
+import { getAccessibleColour } from '../../common/utils/styleUtils';
 
 import BlockRow from './cuesheet-table-elements/BlockRow';
 import CuesheetHeader from './cuesheet-table-elements/CuesheetHeader';
@@ -24,10 +25,7 @@ interface CuesheetProps {
 }
 
 export default function Cuesheet({ data, columns, handleUpdate, selectedId }: CuesheetProps) {
-  const followSelected = useCuesheetSettings((state) => state.followSelected);
-  const showSettings = useCuesheetSettings((state) => state.showSettings);
-  const showDelayBlock = useCuesheetSettings((state) => state.showDelayBlock);
-  const showPrevious = useCuesheetSettings((state) => state.showPrevious);
+  const { followSelected, showSettings, showDelayBlock, showPrevious } = useCuesheetSettings();
 
   const [columnVisibility, setColumnVisibility] = useLocalStorage('table-hidden', {});
   const [columnOrder, saveColumnOrder] = useLocalStorage<string[]>('table-order', initialColumnOrder);
@@ -66,7 +64,9 @@ export default function Cuesheet({ data, columns, handleUpdate, selectedId }: Cu
     setColumnSizing({});
   };
 
-  const headerGroups = table.getHeaderGroups;
+  const headerGroups = table.getHeaderGroups();
+  const rowModel = table.getRowModel();
+  const allLeafColumns = table.getAllLeafColumns();
 
   let eventIndex = 0;
   let isPast = Boolean(selectedId);
@@ -75,7 +75,7 @@ export default function Cuesheet({ data, columns, handleUpdate, selectedId }: Cu
     <>
       {showSettings && (
         <CuesheetTableSettings
-          columns={table.getAllLeafColumns()}
+          columns={allLeafColumns}
           handleResetResizing={resetColumnResizing}
           handleResetReordering={resetColumnOrder}
           handleClearToggles={setAllVisible}
@@ -85,7 +85,7 @@ export default function Cuesheet({ data, columns, handleUpdate, selectedId }: Cu
         <table className={style.cuesheet}>
           <CuesheetHeader headerGroups={headerGroups} />
           <tbody>
-            {table.getRowModel().rows.map((row) => {
+            {rowModel.rows.map((row) => {
               const key = row.original.id;
               const isSelected = selectedId === key;
               if (isSelected) {
@@ -121,8 +121,8 @@ export default function Cuesheet({ data, columns, handleUpdate, selectedId }: Cu
                 } else if (row.original.colour) {
                   try {
                     // the colour is user defined and might be invalid
-                    const colour = new Color(row.original.colour).alpha(0.25);
-                    rowBgColour = colour.hsl().string();
+                    const accessibleBackgroundColor = Color(getAccessibleColour(row.original.colour).backgroundColor);
+                    rowBgColour = accessibleBackgroundColor.fade(0.75).hexa();
                   } catch (_error) {
                     /* we do not handle errors here */
                   }
