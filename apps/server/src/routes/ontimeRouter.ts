@@ -23,6 +23,7 @@ import {
   postHTTP,
   listProjects,
   loadProject,
+  duplicateProjectFile,
 } from '../controllers/ontimeController.js';
 
 import {
@@ -35,6 +36,7 @@ import {
   validateHTTP,
   validateOscSubscription,
   validateLoadProjectFile,
+  validateProjectDuplicate,
 } from '../controllers/ontimeController.validate.js';
 import { projectSanitiser } from '../controllers/projectController.validate.js';
 
@@ -105,3 +107,6 @@ router.get('/projects', listProjects);
 
 // create route between controller and '/ontime/load-project' endpoint
 router.post('/load-project', validateLoadProjectFile, loadProject);
+
+// create route between controller and '/ontime/duplicate' endpoint
+router.post('/duplicate-project', validateProjectDuplicate, duplicateProjectFile);

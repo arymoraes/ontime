@@ -511,3 +511,39 @@ export const loadProject: RequestHandler = async (req, res) => {
     res.status(500).send({ message: error.toString() });
   }
 };
+
+/**
+ * Duplicates a project file.
+ * Receives the original project filename (`projectFilename`) and the filename for the duplicate (`duplicateProjectFilename`) from the request body.
+ *
+ * @param {Request} req - The express request object. Expects `projectFilename` and `duplicateProjectFilename` in the request body.
+ * @param {Response} res - The express response object. Sends a 200 status with a success message upon successful duplication,
+ *                         a 404 status if the original file is not found, a 409 status if the duplicate file name already exists,
+ *                         or a 500 status with an error message in case of an exception.
+ */
+export const duplicateProjectFile: RequestHandler = async (req, res) => {
+  try {
+    const { projectFilename, duplicateProjectFilename } = req.body;
+
+    const uploadsFolderPath = join(getAppDataPath(), 'uploads');
+    const projectFilePath = join(uploadsFolderPath, projectFilename);
+    const duplicateProjectFilePath = join(uploadsFolderPath, duplicateProjectFilename);
+
+    if (!fs.existsSync(projectFilePath)) {
+      return res.status(404).send({ message: 'File not found' });
+    }
+
+    // If duplicate file name already exists, return 409
+    if (fs.existsSync(duplicateProjectFilePath)) {
+      return res.status(409).send({ message: 'Duplicate project file already exists' });
+    }
+
+    fs.copyFileSync(projectFilePath, duplicateProjectFilePath);
+
+    res.status(200).send({
+      message: `Duplicated project ${projectFilename} to ${duplicateProjectFilename}`,
+    });
+  } catch (error) {
+    res.status(500).send({ message: error.toString() });
+  }
+};
