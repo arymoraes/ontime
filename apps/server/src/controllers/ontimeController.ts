@@ -13,6 +13,7 @@ import { RequestHandler, Request, Response } from 'express';
 import fs from 'fs';
 import { networkInterfaces } from 'os';
 import { join } from 'path';
+import { copyFile, open } from 'fs/promises';
 
 import { fileHandler } from '../utils/parser.js';
 import { DataProvider } from '../classes/data-provider/DataProvider.js';
@@ -529,16 +530,22 @@ export const duplicateProjectFile: RequestHandler = async (req, res) => {
     const projectFilePath = join(uploadsFolderPath, projectFilename);
     const duplicateProjectFilePath = join(uploadsFolderPath, duplicateProjectFilename);
 
-    if (!fs.existsSync(projectFilePath)) {
+    try {
+      await open(projectFilePath);
+    } catch (error) {
       return res.status(404).send({ message: 'File not found' });
     }
 
-    // If duplicate file name already exists, return 409
-    if (fs.existsSync(duplicateProjectFilePath)) {
-      return res.status(409).send({ message: 'Duplicate project file already exists' });
+    try {
+      await open(duplicateProjectFilePath);
+
+      // File exists, so we can't continue
+      return res.status(409).send({ message: 'Duplicate file name already exists' });
+    } catch (error) {
+      // File does not exist, so we can continue
     }
 
-    fs.copyFileSync(projectFilePath, duplicateProjectFilePath);
+    await copyFile(projectFilePath, duplicateProjectFilePath);
 
     res.status(200).send({
       message: `Duplicated project ${projectFilename} to ${duplicateProjectFilename}`,
